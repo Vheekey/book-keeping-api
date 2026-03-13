@@ -1,0 +1,9 @@
+# Maven / Gradle
+/target/
+
+# IntelliJ
+/.idea/
+*.iml
+
+# Local config
+src/main/resources/application-local.properties

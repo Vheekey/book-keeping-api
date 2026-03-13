@@ -29,11 +29,22 @@ Book Keeping API is a Spring Boot service for managing finance operations across
 
 ## Configuration
 
-Default database settings live in `src/main/resources/application.properties`:
+### Environment Variables (recommended)
+Set these in your shell or deployment environment:
 
-- `spring.datasource.url=jdbc:postgresql://localhost:5432/book_keeping`
-- `spring.datasource.username=postgres`
-- `spring.datasource.password=postgres`
+- `DB_URL` (example: `jdbc:postgresql://localhost:5432/book_keeping`)
+- `DB_USER`
+- `DB_PASSWORD`
+
+### Local Development (no secrets in repo)
+1. Copy the example file to a local, ignored file:
+   - `src/main/resources/application-example.properties`
+   - `src/main/resources/application-local.properties`
+2. Run with the local profile:
+
+```bash
+SPRING_PROFILES_ACTIVE=local mvn spring-boot:run
+```
 
 ## Build and Run
 
