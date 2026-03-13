@@ -7,7 +7,7 @@ Book Keeping API is a Spring Boot service for managing finance operations across
 
 - reimbursement = request submission
 - accounting = ledger posting
-- budget = ministry category allocation
+- budget = category allocation
 - audit = immutable logs
 - approval = workflows
 - receipt = receipt capture and attachment
@@ -48,7 +48,12 @@ SPRING_PROFILES_ACTIVE=local mvn spring-boot:run
 
 ## Build and Run
 
+### Option 1: Environment Variables
+
 ```bash
+export DB_URL=jdbc:postgresql://localhost:5432/book_keeping
+export DB_USER=postgres
+export DB_PASSWORD=postgres
 mvn spring-boot:run
 ```
 
