@@ -1,4 +1,4 @@
-package com.calvary.finance.budget;
+package com.calvary.finance.budget.category;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
