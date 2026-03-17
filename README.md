@@ -93,6 +93,3 @@ Validation errors return a 400 with field details:
 ```bash
 ./mvnw test
 ```
-
-## Notes
-- Module packages are currently placeholders; add services, controllers, and entities within each module as needed.
