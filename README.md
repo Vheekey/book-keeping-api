@@ -59,6 +59,19 @@ export DB_PASSWORD=postgres
 ./mvnw spring-boot:run
 ```
 
+## Database Migrations (Manual)
+
+Migrations are managed with Flyway and are run manually (not on app startup).
+
+```bash
+./mvnw -Dflyway.url=jdbc:postgresql://localhost:5432/book_keeping \
+       -Dflyway.user=postgres \
+       -Dflyway.password=postgres \
+       flyway:migrate
+```
+
+Rollback SQL scripts (when needed) live in `src/main/resources/db/rollback/` and can be executed manually with `psql`.
+
 ## Endpoints
 
 ### Budget Categories
@@ -93,6 +106,3 @@ Validation errors return a 400 with field details:
 ```bash
 ./mvnw test
 ```
-
-## Notes
-- Module packages are currently placeholders; add services, controllers, and entities within each module as needed.
