@@ -27,7 +27,11 @@ Book Keeping API is a Spring Boot service for managing finance operations across
 - `src/main/java/com/calvary/finance/` root package
 - Sub-packages per module (see Modules)
 
-## Configuration
+## Setup
+
+### Prerequisites
+- Java 17+
+- PostgreSQL running locally or accessible remotely
 
 ### Environment Variables (recommended)
 Set these in your shell or deployment environment:
@@ -43,24 +47,51 @@ Set these in your shell or deployment environment:
 2. Run with the local profile:
 
 ```bash
-SPRING_PROFILES_ACTIVE=local mvn spring-boot:run
+SPRING_PROFILES_ACTIVE=local ./mvnw spring-boot:run
 ```
 
 ## Build and Run
-
-### Option 1: Environment Variables
 
 ```bash
 export DB_URL=jdbc:postgresql://localhost:5432/book_keeping
 export DB_USER=postgres
 export DB_PASSWORD=postgres
-mvn spring-boot:run
+./mvnw spring-boot:run
+```
+
+## Endpoints
+
+### Budget Categories
+
+- `GET /api/v1/book-keeping/budget/categories` — list all categories
+- `GET /api/v1/book-keeping/budget/categories/active` — list active categories
+- `PUT /api/v1/book-keeping/budget/categories/{accNo}/change-status` — toggle active status
+- `POST /api/v1/book-keeping/budget/categories` — create a category
+
+### Reimbursements
+
+- `POST /api/v1/book-keeping/reimbursement/create` — create reimbursement request
+
+## Validation Errors
+
+Validation errors return a 400 with field details:
+
+```json
+{
+  "timestamp": "2026-03-17T06:20:29.667Z",
+  "status": 400,
+  "error": "Bad Request",
+  "path": "/api/v1/book-keeping/budget/categories",
+  "fieldErrors": [
+    { "field": "accNo", "message": "accNo already exists" }
+  ]
+}
 ```
 
 ## Test
 
 ```bash
-mvn test
+./mvnw test
 ```
 
 ## Notes
