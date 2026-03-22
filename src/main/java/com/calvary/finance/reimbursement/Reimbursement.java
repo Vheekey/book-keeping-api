@@ -1,13 +1,14 @@
 package com.calvary.finance.reimbursement;
 
-import com.calvary.finance.budget.category.validation.ExistsAccNo;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "reimbursements")
@@ -29,4 +30,12 @@ public class Reimbursement {
     private String accNo;
     private String phoneNumber;
     private boolean isCorrect;
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private OffsetDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at", nullable = false)
+    private OffsetDateTime updatedAt;
 }

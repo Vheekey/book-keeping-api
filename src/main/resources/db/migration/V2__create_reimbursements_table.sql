@@ -12,6 +12,8 @@ CREATE TABLE reimbursements
     acc_no           VARCHAR(5) NOT NULL,
     phone_number     TEXT,
     is_correct       BOOLEAN DEFAULT FALSE,
+    created_at       TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at       TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_reimbursements_acc_no
         FOREIGN KEY (acc_no)
             REFERENCES budget_categories (acc_no)
