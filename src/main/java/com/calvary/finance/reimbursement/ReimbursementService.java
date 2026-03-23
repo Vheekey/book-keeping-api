@@ -2,9 +2,11 @@ package com.calvary.finance.reimbursement;
 
 import com.calvary.finance.audit.AuditLogService;
 import com.calvary.finance.reimbursement.requests.CreateReimbursementRequest;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -13,6 +15,7 @@ import java.util.Map;
 public class ReimbursementService {
     private final ReimbursementRepository reimbursementRepository;
     private final AuditLogService auditLogService;
+    private static final String ENTITY = "Reimbursement";
 
     public ReimbursementService(
             ReimbursementRepository reimbursementRepository,
@@ -36,11 +39,12 @@ public class ReimbursementService {
         newReimbursement.setClearingNumber(createReimbursementRequest.getClearingNumber());
         newReimbursement.setPhoneNumber(createReimbursementRequest.getPhoneNumber());
         newReimbursement.setCorrect(createReimbursementRequest.getIsCorrect());
+        newReimbursement.setStatus(ReimbursementStatus.PENDING);
 
         Reimbursement savedNewReimbursement = reimbursementRepository.save(newReimbursement);
         auditLogService.log(
                 "REIMBURSEMENT_CREATED",
-                "Reimbursement",
+                ENTITY,
                 String.valueOf(savedNewReimbursement.getId()),
                 savedNewReimbursement.getName(),
                 buildAuditDetails(savedNewReimbursement)
@@ -63,5 +67,53 @@ public class ReimbursementService {
         details.put("accNo", reimbursement.getAccNo());
         details.put("isCorrect", reimbursement.isCorrect());
         return details;
+    }
+
+    @Transactional
+    public ReimbursementResponse approveNewReimbursement(Long reimbursementId, String comment, Boolean isApproved) {
+        Reimbursement reimbursement = reimbursementRepository.findById(reimbursementId)
+                .orElseThrow(() -> new EntityNotFoundException("Reimbursement not found"));
+        Long userId = 1L; //TODO: set authenticated user id
+
+        ReimbursementStatus status = (isApproved == true) ? ReimbursementStatus.APPROVED : ReimbursementStatus.REJECTED;
+        reimbursement.setAdminComment(comment);
+        reimbursement.setStatus(status);
+        reimbursement.setProcessedBy(userId);
+        reimbursement.setProcessedAt(Instant.now());
+        Reimbursement savedReimbursement = reimbursementRepository.save(reimbursement);
+        auditLogService.log("REIMBURSEMENT_APPROVAL_DECISION",
+                ENTITY,
+                String.valueOf(savedReimbursement.getId()),
+                String.valueOf(userId),
+                buildAuditDetails(savedReimbursement));
+
+        return new ReimbursementResponse()
+                .setMessage("Reimbursement Processed")
+                .setReimbursements(List.of(savedReimbursement));
+    }
+
+    @Transactional
+    public ReimbursementResponse payoutReimbursement(Long reimbursementId) {
+        Reimbursement reimbursement = reimbursementRepository
+                .findById(reimbursementId).orElseThrow(() -> new EntityNotFoundException("Reimbursement not found"));
+
+        if (!reimbursement.getStatus().equals(ReimbursementStatus.APPROVED)) {
+            throw new RuntimeException("Reimbursement not approved for payout");
+        }
+
+        Long adminId = 1L; //TODO: Use authenticated user
+        reimbursement.setStatus(ReimbursementStatus.PAID);
+        reimbursement.setPaidOutBy(adminId);
+        reimbursement.setPaidOutAt(Instant.now());
+        Reimbursement saved = reimbursementRepository.save(reimbursement);
+
+        auditLogService.log("REIMBURSEMENT_PAID",
+                ENTITY,
+                String.valueOf(reimbursement.getId()),
+                String.valueOf(adminId),
+                buildAuditDetails(reimbursement)
+        );
+
+        return new ReimbursementResponse().setMessage("Reimbursement paid").setReimbursements(List.of(saved));
     }
 }

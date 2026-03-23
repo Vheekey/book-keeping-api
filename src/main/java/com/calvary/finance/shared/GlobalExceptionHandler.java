@@ -1,5 +1,6 @@
 package com.calvary.finance.shared;
 
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -30,6 +31,30 @@ public class GlobalExceptionHandler {
                 .map(this::toApiFieldError)
                 .collect(Collectors.toList());
         error.setFieldErrors(fields);
+
+        return ResponseEntity.badRequest().body(error);
+    }
+
+    @ExceptionHandler(EntityNotFoundException.class)
+    public ResponseEntity<ApiError> handleEntityNotFoundException(
+            EntityNotFoundException ex, HttpServletRequest request
+    ){
+        ApiError error = new ApiError();
+        error.setStatus(HttpStatus.NOT_FOUND.value());
+        error.setError(ex.getMessage());
+        error.setPath(request.getRequestURI());
+
+        return ResponseEntity.badRequest().body(error);
+    }
+
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<ApiError> handleRuntimeException(
+            RuntimeException ex, HttpServletRequest request
+    ){
+        ApiError error = new ApiError();
+        error.setStatus(HttpStatus.BAD_REQUEST.value());
+        error.setError(ex.getMessage());
+        error.setPath(request.getRequestURI());
 
         return ResponseEntity.badRequest().body(error);
     }
