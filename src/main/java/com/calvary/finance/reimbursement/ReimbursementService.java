@@ -3,10 +3,14 @@ package com.calvary.finance.reimbursement;
 import com.calvary.finance.audit.AuditLogService;
 import com.calvary.finance.reimbursement.requests.CreateReimbursementRequest;
 import jakarta.persistence.EntityNotFoundException;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -115,5 +119,59 @@ public class ReimbursementService {
         );
 
         return new ReimbursementResponse().setMessage("Reimbursement paid").setReimbursements(List.of(saved));
+    }
+
+    public ReimbursementResponse getReimbursement(Long reimbursementId) {
+        Reimbursement reimbursement = reimbursementRepository.findById(reimbursementId)
+                .orElseThrow(() -> new EntityNotFoundException("Reimbursement not found"));
+        return new ReimbursementResponse()
+                .setMessage("Reimbursement retrieved")
+                .setReimbursements(List.of(reimbursement));
+    }
+
+    public ReimbursementResponse getReimbursements(
+            int pageNumber,
+            int pageSize,
+            String status,
+            LocalDate startDate,
+            LocalDate endDate
+    ) {
+        Pageable pageable = PageRequest.of(pageNumber, pageSize, Sort.by("id").descending());
+        boolean allStatuses = "all".equalsIgnoreCase(status);
+
+        List<Reimbursement> reimbursements;
+        if (allStatuses && startDate == null && endDate == null) {
+            reimbursements = reimbursementRepository.findAll(pageable).getContent();
+        } else if (allStatuses && startDate != null && endDate != null) {
+            reimbursements = reimbursementRepository.findAllByExpenditureDateBetween(startDate, endDate, pageable)
+                    .getContent();
+        } else if (allStatuses && startDate != null) {
+            reimbursements = reimbursementRepository.findAllByExpenditureDateGreaterThanEqual(startDate, pageable)
+                    .getContent();
+        } else if (allStatuses) {
+            reimbursements = reimbursementRepository.findAllByExpenditureDateLessThanEqual(endDate, pageable)
+                    .getContent();
+        } else {
+            ReimbursementStatus reimbursementStatus = ReimbursementStatus.valueOf(status.toUpperCase());
+            if (startDate == null && endDate == null) {
+                reimbursements = reimbursementRepository.findAllByStatus(reimbursementStatus, pageable).getContent();
+            } else if (startDate != null && endDate != null) {
+                reimbursements = reimbursementRepository
+                        .findAllByStatusAndExpenditureDateBetween(reimbursementStatus, startDate, endDate, pageable)
+                        .getContent();
+            } else if (startDate != null) {
+                reimbursements = reimbursementRepository
+                        .findAllByStatusAndExpenditureDateGreaterThanEqual(reimbursementStatus, startDate, pageable)
+                        .getContent();
+            } else {
+                reimbursements = reimbursementRepository
+                        .findAllByStatusAndExpenditureDateLessThanEqual(reimbursementStatus, endDate, pageable)
+                        .getContent();
+            }
+        }
+
+        return new ReimbursementResponse()
+                .setReimbursements(reimbursements)
+                .setMessage("All Reimbursements");
     }
 }
