@@ -24,70 +24,178 @@ Book Keeping API is a Spring Boot service for managing finance operations across
 
 ## Project Structure
 
-- `src/main/java/com/calvary/finance/` root package
-- Sub-packages per module (see Modules)
+```text
+src/main/java/com/calvary/finance/
+├── budget/category        # budget category API, validation, persistence
+├── reimbursement          # reimbursement API, workflow, persistence
+├── audit                  # audit log persistence/services
+└── shared                 # exception handling and shared config
+```
 
-## Setup
+## Prerequisites
 
-### Prerequisites
 - Java 17+
-- PostgreSQL running locally or accessible remotely
+- PostgreSQL
 
-### Environment Variables (recommended)
-Set these in your shell or deployment environment:
+## Configuration
 
-- `DB_URL` (example: `jdbc:postgresql://localhost:5432/book_keeping`)
-- `DB_USER`
-- `DB_PASSWORD`
+The application reads datasource settings from `src/main/resources/application.properties`.
 
-### Local Development (no secrets in repo)
-1. Copy the example file to a local, ignored file:
-   - `src/main/resources/application-example.properties`
-   - `src/main/resources/application-local.properties`
-2. Run with the local profile:
+Supported environment variables:
+
+- `DB_URL` default: `jdbc:postgresql://localhost:5432/book_keeping`
+- `DB_USER` default: ``
+- `DB_PASSWORD` default: ``
+
+For local development, copy the example config and override values as needed:
 
 ```bash
+cp src/main/resources/application-example.properties src/main/resources/application-local.properties
 SPRING_PROFILES_ACTIVE=local ./mvnw spring-boot:run
 ```
 
-## Build and Run
+Notes:
+
+- Hibernate DDL auto is disabled: `spring.jpa.hibernate.ddl-auto=none`
+- Flyway auto-run is disabled: `spring.flyway.enabled=false`
+- CORS currently allows `http://localhost:5173` and `http://127.0.0.1:5173`
+
+## Run the Application
 
 ```bash
 export DB_URL=jdbc:postgresql://localhost:5432/book_keeping
 export DB_USER=postgres
 export DB_PASSWORD=postgres
+
 ./mvnw spring-boot:run
 ```
 
-## Database Migrations (Manual)
+## Database Migrations
 
-Migrations are managed with Flyway and are run manually (not on app startup).
+Flyway migrations are present under `src/main/resources/db/migration` and are intended to be run manually:
 
 ```bash
-./mvnw -Dflyway.url=jdbc:postgresql://localhost:5432/book_keeping \
-       -Dflyway.user=postgres \
-       -Dflyway.password=postgres \
-       flyway:migrate
+./mvnw \
+  -Dflyway.url=jdbc:postgresql://localhost:5432/book_keeping \
+  -Dflyway.user=postgres \
+  -Dflyway.password=postgres \
+  flyway:migrate
 ```
 
-Rollback SQL scripts (when needed) live in `src/main/resources/db/rollback/` and can be executed manually with `psql`.
+Available migration files:
+
+- `V1__create_budget_categories_table.sql`
+- `V2__create_reimbursements_table.sql`
+- `V3__create_audit_logs_table.sql`
+
+Manual rollback scripts are stored in `src/main/resources/db/rollback`.
+
+Seed data for budget categories is available in `src/main/resources/db/seeders/budget_categories.sql`.
+
+## API Base Path
+
+All endpoints are served under:
+
+```text
+/api/v1/book-keeping
+```
 
 ## Endpoints
 
 ### Budget Categories
 
-- `GET /api/v1/book-keeping/budget/categories` — list all categories
-- `GET /api/v1/book-keeping/budget/categories/active` — list active categories
-- `PUT /api/v1/book-keeping/budget/categories/{accNo}/change-status` — toggle active status
-- `POST /api/v1/book-keeping/budget/categories` — create a category
+#### `GET /api/v1/book-keeping/budget/categories`
+
+Returns all budget categories.
+
+#### `GET /api/v1/book-keeping/budget/categories/active`
+
+Returns only active budget categories.
+
+#### `POST /api/v1/book-keeping/budget/categories`
+
+Creates a budget category.
+
+Request body:
+
+```json
+{
+  "accNo": "1001",
+  "description": "Transport"
+}
+```
+
+#### `PUT /api/v1/book-keeping/budget/categories/{accNo}/change-status`
+
+Toggles the active status for the category identified by `accNo`.
 
 ### Reimbursements
 
-- `POST /api/v1/book-keeping/reimbursement/create` — create reimbursement request
+#### `POST /api/v1/book-keeping/reimbursements/create`
 
-## Validation Errors
+Creates a reimbursement request.
 
-Validation errors return a 400 with field details:
+Request body:
+
+```json
+{
+  "expenditureDate": "2024-06-01",
+  "name": "John Doe",
+  "description": "Fuel reimbursement",
+  "amount": 1500.00,
+  "shouldReimburse": true,
+  "accountName": "John Doe",
+  "clearingNumber": "1234",
+  "accountNumber": "1234567890",
+  "accNo": "1001",
+  "phoneNumber": "+233123456789",
+  "isCorrect": true
+}
+```
+
+#### `GET /api/v1/book-keeping/reimbursements`
+
+Returns reimbursements with optional filtering and pagination.
+
+Query parameters:
+
+- `pageNumber` default: `0`
+- `pageSize` default: `10`
+- `status` default: `all`
+- `startDate` optional, ISO date
+- `endDate` optional, ISO date
+
+Supported reimbursement statuses:
+
+- `PENDING`
+- `APPROVED`
+- `REJECTED`
+- `PAID`
+
+#### `GET /api/v1/book-keeping/reimbursements/{reimbursementId}`
+
+Returns a single reimbursement by ID.
+
+#### `POST /api/v1/book-keeping/reimbursements/{reimbursementId}/approve`
+
+Approves or rejects a reimbursement.
+
+Request body:
+
+```json
+{
+  "comment": "Approved for payout",
+  "isApproved": true
+}
+```
+
+#### `POST /api/v1/book-keeping/reimbursements/{reimbursementId}/payout`
+
+Marks an approved reimbursement as paid.
+
+## Error Responses
+
+Validation and runtime failures are returned as API errors in this format:
 
 ```json
 {
@@ -96,13 +204,24 @@ Validation errors return a 400 with field details:
   "error": "Bad Request",
   "path": "/api/v1/book-keeping/budget/categories",
   "fieldErrors": [
-    { "field": "accNo", "message": "accNo already exists" }
+    {
+      "field": "accNo",
+      "message": "accNo already exists"
+    }
   ]
 }
 ```
 
-## Test
+## Build and Test
+
+Run tests:
 
 ```bash
 ./mvnw test
+```
+
+Build the application:
+
+```bash
+./mvnw clean package
 ```
