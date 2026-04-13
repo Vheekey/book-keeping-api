@@ -74,10 +74,9 @@ public class ReimbursementService {
     }
 
     @Transactional
-    public ReimbursementResponse approveNewReimbursement(Long reimbursementId, String comment, Boolean isApproved) {
+    public ReimbursementResponse approveNewReimbursement(Long reimbursementId, Long userId, String comment, Boolean isApproved) {
         Reimbursement reimbursement = reimbursementRepository.findById(reimbursementId)
                 .orElseThrow(() -> new EntityNotFoundException("Reimbursement not found"));
-        Long userId = 1L; //TODO: set authenticated user id
 
         ReimbursementStatus status = (isApproved == true) ? ReimbursementStatus.APPROVED : ReimbursementStatus.REJECTED;
         reimbursement.setAdminComment(comment);
@@ -97,7 +96,7 @@ public class ReimbursementService {
     }
 
     @Transactional
-    public ReimbursementResponse payoutReimbursement(Long reimbursementId) {
+    public ReimbursementResponse payoutReimbursement(Long reimbursementId, Long adminId) {
         Reimbursement reimbursement = reimbursementRepository
                 .findById(reimbursementId).orElseThrow(() -> new EntityNotFoundException("Reimbursement not found"));
 
@@ -105,7 +104,6 @@ public class ReimbursementService {
             throw new RuntimeException("Reimbursement not approved for payout");
         }
 
-        Long adminId = 1L; //TODO: Use authenticated user
         reimbursement.setStatus(ReimbursementStatus.PAID);
         reimbursement.setPaidOutBy(adminId);
         reimbursement.setPaidOutAt(Instant.now());

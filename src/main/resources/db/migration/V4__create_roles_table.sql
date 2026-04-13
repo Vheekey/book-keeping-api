@@ -1,0 +1,9 @@
+CREATE TABLE roles
+(
+    id         BIGSERIAL PRIMARY KEY,
+    name       VARCHAR(50)              NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX idx_roles_name_unique ON roles(name);
