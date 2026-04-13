@@ -5,13 +5,15 @@ import com.calvary.finance.reimbursement.requests.CreateReimbursementRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/book-keeping/reimbursements")
+@RequestMapping("/reimbursements")
 public class ReimbursementController {
 
     private final ReimbursementService reimbursementService;
@@ -52,21 +54,32 @@ public class ReimbursementController {
         return ResponseEntity.ok(response);
     }
 
+    @PreAuthorize("hasRole('FINANCE')")
     @PostMapping("{reimbursementId}/approve")
     public ResponseEntity<ReimbursementResponse> approveReimbursement(
-            @PathVariable Long reimbursementId, @RequestBody Map<String, String> request
+            @PathVariable Long reimbursementId,
+            @RequestBody Map<String, String> request,
+            Authentication authentication
     ) {
         ReimbursementResponse response = reimbursementService.approveNewReimbursement(
                 reimbursementId,
+                (Long) authentication.getPrincipal(),
                 request.get("comment"),
                 Boolean.parseBoolean(request.getOrDefault("isApproved", "false"))
         );
         return ResponseEntity.ok(response);
     }
 
+    @PreAuthorize("hasRole('FINANCE')")
     @PostMapping("{reimbursementId}/payout")
-    public ResponseEntity<ReimbursementResponse> payoutReimbursement(@PathVariable Long reimbursementId) {
-        ReimbursementResponse response = reimbursementService.payoutReimbursement(reimbursementId);
+    public ResponseEntity<ReimbursementResponse> payoutReimbursement(
+            @PathVariable Long reimbursementId,
+            Authentication authentication
+    ) {
+        ReimbursementResponse response = reimbursementService.payoutReimbursement(
+                reimbursementId,
+                (Long) authentication.getPrincipal()
+        );
         return ResponseEntity.ok(response);
     }
 }
