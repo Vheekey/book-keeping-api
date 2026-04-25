@@ -95,7 +95,7 @@ export JWT_SECRET=V3RTZWNyZXRLZXlGb3JKV1RUaGF0SXNMb25nRW5vdWdo
 The API will be available at:
 
 ```text
-http://localhost:8080/api/v1/book-keeping
+http://localhost:9095/api/v1/book-keeping
 ```
 
 ## Database Migrations
@@ -189,7 +189,7 @@ Run it against an existing PostgreSQL instance:
 ```bash
 docker run --rm \
   --name book-keeping-api \
-  -p 8080:8080 \
+  -p 9095:8080 \
   -e DB_URL=jdbc:postgresql://host.docker.internal:5432/book_keeping \
   -e DB_USER=postgres \
   -e DB_PASSWORD=postgres \

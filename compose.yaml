@@ -40,7 +40,7 @@ services:
       RECEIPT_JPEG_QUALITY: ${RECEIPT_JPEG_QUALITY:-0.75}
       JAVA_OPTS: ${JAVA_OPTS:-}
     ports:
-      - "${APP_PORT:-8080}:8080"
+      - "${APP_PORT:-9095}:8080"
     volumes:
       - receipt-data:/app/uploads/receipts
 
