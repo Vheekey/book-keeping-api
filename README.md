@@ -1,78 +1,106 @@
 # Book Keeping API
 
-## Overview
-Book Keeping API is a Spring Boot service for managing finance operations across reimbursements, budgeting, approvals, accounting, and audit logging.
-
-## Modules
-
-- reimbursement = request submission
-- accounting = ledger posting
-- budget = category allocation
-- audit = immutable logs
-- approval = workflows
-- receipt = receipt capture and attachment
-- user = user profiles and access
-- shared = shared utilities and cross-cutting concerns
+Spring Boot API for finance book keeping workflows: reimbursements, receipt uploads, budget categories, users, roles,
+and audit logging.
 
 ## Tech Stack
 
 - Java 17
-- Spring Boot 3
+- Spring Boot 3.3
 - Maven
 - PostgreSQL
 - Spring Data JPA
+- Spring Security with JWT bearer tokens
+- Flyway migrations
 
-## Project Structure
+## Project Layout
 
 ```text
 src/main/java/com/calvary/finance/
-├── budget/category        # budget category API, validation, persistence
-├── reimbursement          # reimbursement API, workflow, persistence
-├── audit                  # audit log persistence/services
-└── shared                 # exception handling and shared config
+├── FinanceApplication.java
+├── audit/                 # audit log persistence and services
+├── budget/category/       # budget category API, validation, and persistence
+├── receipt/               # receipt upload, storage, processing, and metadata APIs
+├── reimbursement/         # reimbursement requests, approvals, payout, and queries
+├── shared/                # JWT, security, CORS, errors, and exception handling
+└── user/                  # users, roles, auth, and role assignment
+```
+
+Database scripts live under:
+
+```text
+src/main/resources/db/
+├── migration/             # Flyway versioned migrations
+├── rollback/              # manual rollback scripts
+└── seeders/               # optional seed data
 ```
 
 ## Prerequisites
 
 - Java 17+
 - PostgreSQL
+- Maven wrapper from this repository (`./mvnw`)
 
 ## Configuration
 
-The application reads datasource settings from `src/main/resources/application.properties`.
+The API base path is:
 
-Supported environment variables:
+```text
+/api/v1/book-keeping
+```
 
-- `DB_URL` default: `jdbc:postgresql://localhost:5432/book_keeping`
-- `DB_USER` default: ``
-- `DB_PASSWORD` default: ``
-
-For local development, copy the example config and override values as needed:
+Runtime configuration is read from `src/main/resources/application.properties`. For local overrides, copy the example
+file and run with the `local` profile:
 
 ```bash
 cp src/main/resources/application-example.properties src/main/resources/application-local.properties
 SPRING_PROFILES_ACTIVE=local ./mvnw spring-boot:run
 ```
 
-Notes:
+Supported environment variables:
 
-- Hibernate DDL auto is disabled: `spring.jpa.hibernate.ddl-auto=none`
-- Flyway auto-run is disabled: `spring.flyway.enabled=false`
-- CORS currently allows `http://localhost:5173` and `http://127.0.0.1:5173`
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `DB_URL` | `jdbc:postgresql://localhost:5432/book_keeping` | PostgreSQL JDBC URL |
+| `DB_USER` | varies by properties file | PostgreSQL username |
+| `DB_PASSWORD` | varies by properties file | PostgreSQL password |
+| `JWT_SECRET` | required by `application-example.properties` | Base64-compatible JWT signing secret |
+| `JWT_EXPIRATION_MS` | `86400000` | JWT lifetime in milliseconds |
+| `RECEIPT_STORAGE_PATH` | `uploads/receipts` | Receipt file storage root |
+| `RECEIPT_MAX_UPLOAD_BYTES` | `10485760` | Maximum receipt upload size, 10 MiB by default |
+| `RECEIPT_MAX_IMAGE_DIMENSION` | `1600` | Maximum image width or height after processing |
+| `RECEIPT_JPEG_QUALITY` | `0.75` | JPEG compression quality for processed image receipts |
 
-## Run the Application
+Important defaults:
+
+- `spring.jpa.hibernate.ddl-auto=none`
+- `spring.flyway.enabled=false`
+- CORS allows `http://localhost:5173` and `http://127.0.0.1:5173`
+
+## Run Locally
+
+Create the database first, then configure credentials:
 
 ```bash
+createdb book_keeping
+
 export DB_URL=jdbc:postgresql://localhost:5432/book_keeping
 export DB_USER=postgres
 export DB_PASSWORD=postgres
+export JWT_SECRET=V3RTZWNyZXRLZXlGb3JKV1RUaGF0SXNMb25nRW5vdWdo
 
 ./mvnw spring-boot:run
 ```
 
+The API will be available at:
+
+```text
+http://localhost:8080/api/v1/book-keeping
+```
+
 ## Database Migrations
 
-Flyway migrations are present under `src/main/resources/db/migration` and are intended to be run manually:
+Flyway auto-run is currently disabled, so migrations are intended to be run manually:
 
 ```bash
 ./mvnw \
@@ -82,135 +110,10 @@ Flyway migrations are present under `src/main/resources/db/migration` and are in
   flyway:migrate
 ```
 
-Available migration files:
+## API Reference
 
-- `V1__create_budget_categories_table.sql`
-- `V2__create_reimbursements_table.sql`
-- `V3__create_audit_logs_table.sql`
-
-Manual rollback scripts are stored in `src/main/resources/db/rollback`.
-
-Seed data for budget categories is available in `src/main/resources/db/seeders/budget_categories.sql`.
-
-## API Base Path
-
-All endpoints are served under:
-
-```text
-/api/v1/book-keeping
-```
-
-## Endpoints
-
-### Budget Categories
-
-#### `GET /api/v1/book-keeping/budget/categories`
-
-Returns all budget categories.
-
-#### `GET /api/v1/book-keeping/budget/categories/active`
-
-Returns only active budget categories.
-
-#### `POST /api/v1/book-keeping/budget/categories`
-
-Creates a budget category.
-
-Request body:
-
-```json
-{
-  "accNo": "1001",
-  "description": "Transport"
-}
-```
-
-#### `PUT /api/v1/book-keeping/budget/categories/{accNo}/change-status`
-
-Toggles the active status for the category identified by `accNo`.
-
-### Reimbursements
-
-#### `POST /api/v1/book-keeping/reimbursements/create`
-
-Creates a reimbursement request.
-
-Request body:
-
-```json
-{
-  "expenditureDate": "2024-06-01",
-  "name": "John Doe",
-  "description": "Fuel reimbursement",
-  "amount": 1500.00,
-  "shouldReimburse": true,
-  "accountName": "John Doe",
-  "clearingNumber": "1234",
-  "accountNumber": "1234567890",
-  "accNo": "1001",
-  "phoneNumber": "+233123456789",
-  "isCorrect": true
-}
-```
-
-#### `GET /api/v1/book-keeping/reimbursements`
-
-Returns reimbursements with optional filtering and pagination.
-
-Query parameters:
-
-- `pageNumber` default: `0`
-- `pageSize` default: `10`
-- `status` default: `all`
-- `startDate` optional, ISO date
-- `endDate` optional, ISO date
-
-Supported reimbursement statuses:
-
-- `PENDING`
-- `APPROVED`
-- `REJECTED`
-- `PAID`
-
-#### `GET /api/v1/book-keeping/reimbursements/{reimbursementId}`
-
-Returns a single reimbursement by ID.
-
-#### `POST /api/v1/book-keeping/reimbursements/{reimbursementId}/approve`
-
-Approves or rejects a reimbursement.
-
-Request body:
-
-```json
-{
-  "comment": "Approved for payout",
-  "isApproved": true
-}
-```
-
-#### `POST /api/v1/book-keeping/reimbursements/{reimbursementId}/payout`
-
-Marks an approved reimbursement as paid.
-
-## Error Responses
-
-Validation and runtime failures are returned as API errors in this format:
-
-```json
-{
-  "timestamp": "2026-03-17T06:20:29.667Z",
-  "status": 400,
-  "error": "Bad Request",
-  "path": "/api/v1/book-keeping/budget/categories",
-  "fieldErrors": [
-    {
-      "field": "accNo",
-      "message": "accNo already exists"
-    }
-  ]
-}
-```
+Authentication, authorization, endpoints, request examples, and error response details are documented in
+[`API_README.md`](API_README.md).
 
 ## Build and Test
 
@@ -225,3 +128,75 @@ Build the application:
 ```bash
 ./mvnw clean package
 ```
+
+## Docker Deployment
+
+This repository includes:
+
+- `Dockerfile` for a production-style multi-stage image build
+- `compose.yaml` for the API plus PostgreSQL
+- `.env.docker.example` as a deployment environment template
+
+### Option 1: Run the Full Stack with Docker Compose
+
+Create a deployment env file:
+
+```bash
+cp .env.docker.example .env
+```
+
+Update at least `JWT_SECRET` before deploying, then start the stack:
+
+```bash
+docker compose up --build -d
+```
+
+The API will be available at:
+
+```text
+http://localhost:8080/api/v1/book-keeping
+```
+
+What the compose stack provides:
+
+- PostgreSQL 16 with a persistent `postgres-data` volume
+- The Spring Boot API with a persistent `receipt-data` volume
+- Automatic startup ordering using a PostgreSQL health check
+- Flyway enabled in the API container by default via `SPRING_FLYWAY_ENABLED=true`
+
+To stop the stack:
+
+```bash
+docker compose down
+```
+
+To stop it and remove volumes:
+
+```bash
+docker compose down -v
+```
+
+### Option 2: Build and Run Only the API Image
+
+Build the image:
+
+```bash
+docker build -t book-keeping-api:latest .
+```
+
+Run it against an existing PostgreSQL instance:
+
+```bash
+docker run --rm \
+  --name book-keeping-api \
+  -p 8080:8080 \
+  -e DB_URL=jdbc:postgresql://host.docker.internal:5432/book_keeping \
+  -e DB_USER=postgres \
+  -e DB_PASSWORD=postgres \
+  -e JWT_SECRET=replace-with-a-long-random-base64-compatible-secret \
+  -e SPRING_FLYWAY_ENABLED=true \
+  -v book-keeping-receipts:/app/uploads/receipts \
+  book-keeping-api:latest
+```
+
+Receipt files are stored at `/app/uploads/receipts` inside the container, so keep that path mounted for persistence.

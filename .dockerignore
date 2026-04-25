@@ -1,0 +1,12 @@
+.git
+.gitignore
+.idea
+*.iml
+
+target
+uploads
+
+src/main/resources/application-local.properties
+
+.DS_Store
+*.log
